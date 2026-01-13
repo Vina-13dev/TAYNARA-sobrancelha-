@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taynara Design - Especialista em Sobrancelhas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://upload-widget.cloudinary.com/global/all.js"></script>
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        
+        const app = initializeApp({
+            apiKey: "AIzaSyB8wbhq5Oi7wo9-4LBv5gdmvNRREJzRgIo",
+            authDomain: "taynara-desg.firebaseapp.com",
+            projectId: "taynara-desg",
+            storageBucket: "taynara-desg.firebasestorage.app",
+            messagingSenderId: "127070989394",
+            appId: "1:127070989394:web:0eb0587d26c07eea57438b"
+        });
+        
+        window.db = getFirestore(app);
+        window.CLOUDINARY = { cloudName: 'root', uploadPreset: 'taynara_preset' };
+    </script>
+    <style>
+        :root {
+            --nude-light: #F5EBE0;
+            --nude-medium: #E3D5CA;
+            --brown-soft: #A0826D;
+            --brown-medium: #8B6F47;
+            --brown-dark: #6B5344;
+            --rose-gold: #D4A59A;
+            --cream: #FFF8F0;
+            --text-dark: #4A3F35;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', sans-serif; background: var(--cream); color: var(--text-dark); }
+        .font-display { font-family: 'Cormorant Garamond', serif; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+        .animate-fadeInUp { animation: fadeInUp 0.8s ease-out forwards; }
+        .animate-float { animation: float 6s ease-in-out infinite; }
+        .bg-pattern { background: linear-gradient(135deg, var(--nude-light) 0%, var(--cream) 100%); position: relative; }
+        .whatsapp-float {
+            position: fixed; bottom: 30px; right: 30px; z-index: 1000; width: 70px; height: 70px;
+            background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 10px 30px rgba(37, 211, 102, 0.4); cursor: pointer;
+            transition: all 0.3s ease; animation: float 3s ease-in-out infinite;
+        }
+        .whatsapp-float:hover { transform: scale(1.1); box-shadow: 0 15px 40px rgba(37, 211, 102, 0.5); }
+        .service-card { transition: all 0.4s ease; }
+        .service-card:hover { transform: translateY(-10px); box-shadow: 0 20px 40px rgba(107, 83, 68, 0.15); }
+        .gallery-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+        .gallery-item { position: relative; overflow: hidden; border-radius: 20px; aspect-ratio: 1; cursor: pointer; transition: transform 0.3s; }
+        .gallery-item:hover { transform: scale(1.05); }
+        .gallery-item img { width: 100%; height: 100%; object-fit: cover; }
+        .spinner { border: 3px solid var(--nude-medium); border-top: 3px solid var(--brown-medium); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="module">
+        import { collection, getDocs, doc, setDoc, deleteDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        
+        const db = window.db;
+        let isAdmin = false;
+        let data = { content: {}, gallery: [], services: [] };
+        
+        // LOAD DATA
+        async function loadData() {
+            try {
+                const [contentDoc, galleryDocs, serviceDocs] = await Promise.all([
+                    getDoc(doc(db, 'content', 'main')),
+                    getDocs(collection(db, 'gallery')),
+                    getDocs(collection(db, 'services'))
+                ]);
+                if (contentDoc.exists()) data.content = contentDoc.data();
+                data.gallery = galleryDocs.docs.map(d => ({ id: d.id, ...d.data() }));
+                data.services = serviceDocs.docs.map(d => ({ id: d.id, ...d.data() }));
+            } catch (err) { console.error(err); }
+        }
+        
+        // CHECK PIN
+        async function checkPin(pin) {
+            try {
+                const configDoc = await getDoc(doc(db, 'config', 'admin'));
+                if (!configDoc.exists()) {
+                    await setDoc(doc(db, 'config', 'admin'), { pin: '1002' });
+                    return pin === '1002';
+                }
+                return configDoc.data().pin === pin;
+            } catch (err) {
+                console.error(err);
+                return false;
+            }
+        }
+        
+        // RENDER SITE
+        function renderSite() {
+            const c = {
+                heroTitle: 'Especialista em Design de Sobrancelhas',
+                heroSubtitle: 'Realce sua beleza natural com técnicas exclusivas e personalizadas.',
+                heroImage: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800&q=80',
+                aboutTitle: 'Sobre Mim',
+                aboutText1: 'Sou Taynara, designer de sobrancelhas especializada em criar designs personalizados.',
+                aboutText2: 'Com anos de experiência e formação em técnicas avançadas.',
+                aboutText3: 'Cada sobrancelha é única, assim como você.',
+                aboutImage: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&q=80',
+                contactText: 'Agende sua avaliação e descubra o poder de uma sobrancelha perfeita',
+                phone: '(31) 99999-9999',
+                address: 'Mateus Leme, MG',
+                hours: 'Seg-Sáb: 9h às 18h',
+                stat1Num: '5+', stat1Text: 'Anos de Experiência',
+                stat2Num: '100', stat2Text: 'Clientes Satisfeitas',
+                stat3Num: '100%', stat3Text: 'Dedicação',
+                ...data.content
+            };
+            
+            const services = data.services.length > 0 ? data.services : [
+                { id: '1', title: 'Design de Sobrancelhas', description: 'Técnica personalizada para criar o design perfeito.', price: 'A partir de R$ 80' },
+                { id: '2', title: 'Henna', description: 'Coloração natural que preenche falhas.', price: 'A partir de R$ 60' },
+                { id: '3', title: 'Micropigmentação', description: 'Técnica semi-permanente para sobrancelhas perfeitas.', price: 'Consulte valores' },
+                { id: '4', title: 'Lash Lifting', description: 'Curvatura natural dos cílios sem extensão.', price: 'A partir de R$ 100' }
+            ];
+            
+            const gallery = data.gallery.length > 0 ? data.gallery : [
+                { id: '1', url: 'https://images.unsplash.com/photo-1457972729786-0411a3b2b626?w=600' },
+                { id: '2', url: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600' },
+                { id: '3', url: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600' },
+                { id: '4', url: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=600' },
+                { id: '5', url: 'https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=600' },
+                { id: '6', url: 'https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?w=600' }
+            ];
+            
+            document.getElementById('root').innerHTML = `
+                <header class="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md shadow-lg">
+                    <nav class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+                        <div class="font-display text-3xl font-bold" style="color:var(--brown-dark)">Taynara Design</div>
+                        <div class="hidden md:flex gap-8">
+                            <a href="#sobre" class="hover:opacity-70 transition">Sobre</a>
+                            <a href="#servicos" class="hover:opacity-70 transition">Serviços</a>
+                            <a href="#galeria" class="hover:opacity-70 transition">Galeria</a>
+                            <a href="#contato" class="hover:opacity-70 transition">Contato</a>
+                        </div>
+                    </nav>
+                </header>
+                
+                <section class="bg-pattern min-h-screen flex items-center pt-24 px-6">
+                    <div class="max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
+                        <div class="animate-fadeInUp">
+                            <h1 class="font-display text-6xl md:text-7xl font-bold mb-6" style="color:var(--brown-dark)">${c.heroTitle}</h1>
+                            <p class="text-xl mb-8">${c.heroSubtitle}</p>
+                            <a href="#contato" class="inline-block px-8 py-4 rounded-full font-semibold text-white transition hover:scale-105 shadow-lg" style="background:linear-gradient(135deg,var(--brown-medium),var(--brown-dark))">Agende sua Avaliação</a>
+                        </div>
+                        <div class="animate-float">
+                            <div class="aspect-square rounded-3xl overflow-hidden shadow-2xl">
+                                <img src="${c.heroImage}" alt="Hero" class="w-full h-full object-cover">
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <section id="sobre" class="py-24 px-6">
+                    <div class="max-w-6xl mx-auto grid md:grid-cols-2 gap-16 items-center">
+                        <div>
+                            <h2 class="font-display text-5xl font-bold mb-6" style="color:var(--brown-dark)">${c.aboutTitle}</h2>
+                            <p class="text-lg mb-4">${c.aboutText1}</p>
+                            <p class="text-lg mb-4">${c.aboutText2}</p>
+                            <p class="text-lg">${c.aboutText3}</p>
+                            <div class="mt-10 grid grid-cols-3 gap-6">
+                                <div class="text-center">
+                                    <div class="font-display text-4xl font-bold mb-2" style="color:var(--brown-medium)">${c.stat1Num}</div>
+                                    <div class="text-sm">${c.stat1Text}</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="font-display text-4xl font-bold mb-2" style="color:var(--brown-medium)">${c.stat2Num}</div>
+                                    <div class="text-sm">${c.stat2Text}</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="font-display text-4xl font-bold mb-2" style="color:var(--brown-medium)">${c.stat3Num}</div>
+                                    <div class="text-sm">${c.stat3Text}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="relative">
+                            <div class="rounded-3xl overflow-hidden shadow-2xl">
+                                <img src="${c.aboutImage}" alt="Sobre" class="w-full">
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <section id="servicos" class="py-24 px-6 bg-pattern">
+                    <div class="max-w-7xl mx-auto">
+                        <div class="text-center mb-16">
+                            <h2 class="font-display text-5xl font-bold mb-4" style="color:var(--brown-dark)">Serviços</h2>
+                            <p class="text-xl">Técnicas especializadas para realçar sua beleza natural</p>
+                        </div>
+                        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+                            ${services.map(s => `
+                                <div class="service-card p-8 rounded-3xl shadow-lg bg-white">
+                                    <h3 class="font-display text-2xl font-bold mb-3" style="color:var(--brown-dark)">${s.title}</h3>
+                                    <p class="mb-4">${s.description}</p>
+                                    <div class="font-semibold" style="color:var(--brown-medium)">${s.price}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </section>
+                
+                <section id="galeria" class="py-24 px-6">
+                    <div class="max-w-7xl mx-auto">
+                        <div class="text-center mb-16">
+                            <h2 class="font-display text-5xl font-bold mb-4" style="color:var(--brown-dark)">Galeria de Trabalhos</h2>
+                        </div>
+                        <div class="gallery-grid">
+                            ${gallery.map(g => `<div class="gallery-item"><img src="${g.url}" alt="Galeria"></div>`).join('')}
+                        </div>
+                    </div>
+                </section>
+                
+                <section id="contato" class="py-24 px-6 bg-pattern">
+                    <div class="max-w-4xl mx-auto text-center">
+                        <h2 class="font-display text-5xl font-bold mb-6" style="color:var(--brown-dark)">Entre em Contato</h2>
+                        <p class="text-xl mb-12">${c.contactText}</p>
+                        <div class="grid md:grid-cols-3 gap-8 mb-12">
+                            <div><div class="text-4xl mb-3">📱</div><h3 class="font-bold mb-2">WhatsApp</h3><p>${c.phone}</p></div>
+                            <div><div class="text-4xl mb-3">📍</div><h3 class="font-bold mb-2">Endereço</h3><p>${c.address}</p></div>
+                            <div><div class="text-4xl mb-3">⏰</div><h3 class="font-bold mb-2">Horário</h3><p>${c.hours}</p></div>
+                        </div>
+                        <a href="https://wa.me/55${c.phone.replace(/\D/g,'')}" target="_blank" class="inline-block px-12 py-5 rounded-full font-semibold text-white text-xl transition hover:scale-105 shadow-xl" style="background:linear-gradient(135deg,#25D366,#128C7E)">Fale no WhatsApp</a>
+                    </div>
+                </section>
+                
+                <footer class="py-12 px-6 text-center" style="background:var(--brown-dark);color:var(--cream)">
+                    <div class="font-display text-3xl font-bold mb-4">Taynara Design</div>
+                    <p class="text-sm opacity-70">© 2026 Taynara Design. Todos os direitos reservados.</p>
+                </footer>
+                
+                <div class="whatsapp-float" onclick="window.open('https://wa.me/55${c.phone.replace(/\D/g,'')}','_blank')">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                </div>
+            `;
+        }
+        
+        // RENDER ADMIN LOGIN
+        function renderLogin() {
+            document.getElementById('root').innerHTML = `
+                <div class="min-h-screen flex items-center justify-center bg-pattern px-6">
+                    <div class="max-w-md w-full bg-white rounded-3xl shadow-2xl p-8">
+                        <div class="text-center mb-8">
+                            <div class="text-6xl mb-4">🔐</div>
+                            <h2 class="font-display text-4xl font-bold" style="color:var(--brown-dark)">Painel Admin</h2>
+                            <p class="mt-2 opacity-70">Digite o código PIN</p>
+                        </div>
+                        <form onsubmit="handleLogin(event)">
+                            <input type="password" id="pin" class="w-full px-4 py-4 rounded-xl border-2 text-center text-2xl font-bold tracking-widest mb-4" placeholder="••••" maxlength="4" style="border-color:var(--nude-medium)" required>
+                            <div id="error" class="hidden p-3 rounded-xl bg-red-100 text-red-700 text-center mb-4"></div>
+                            <button type="submit" class="w-full py-4 rounded-xl font-semibold text-white transition hover:scale-105" style="background:linear-gradient(135deg,var(--brown-medium),var(--brown-dark))">Entrar</button>
+                            <p class="text-center text-sm opacity-60 mt-4">PIN padrão: 1002</p>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // RENDER ADMIN PANEL
+        function renderAdmin() {
+            const c = { phone: '(31) 99999-9999', ...data.content };
+            document.getElementById('root').innerHTML = `
+                <div class="min-h-screen" style="background:var(--cream)">
+                    <header class="bg-white shadow-lg px-6 py-4">
+                        <div class="max-w-7xl mx-auto flex justify-between items-center">
+                            <h1 class="font-display text-3xl font-bold" style="color:var(--brown-dark)">Painel Admin</h1>
+                            <button onclick="logout()" class="px-6 py-2 rounded-full bg-red-500 text-white hover:bg-red-600">Sair</button>
+                        </div>
+                    </header>
+                    <div class="max-w-7xl mx-auto px-6 py-12">
+                        <div id="success" class="hidden mb-6 p-4 rounded-xl bg-green-100 text-green-700 text-center"></div>
+                        
+                        <!-- CONTEÚDO -->
+                        <div class="bg-white rounded-3xl shadow-lg p-8 mb-8">
+                            <h2 class="font-display text-3xl font-bold mb-6" style="color:var(--brown-dark)">Editar Conteúdo</h2>
+                            <form onsubmit="saveContent(event)" class="space-y-4">
+                                <input type="text" id="heroTitle" placeholder="Título Principal" class="w-full px-4 py-3 rounded-xl border-2" style="border-color:var(--nude-medium)" value="${c.heroTitle||''}">
+                                <textarea id="heroSubtitle" placeholder="Subtítulo" class="w-full px-4 py-3 rounded-xl border-2 h-24" style="border-color:var(--nude-medium)">${c.heroSubtitle||''}</textarea>
+                                <input type="text" id="aboutTitle" placeholder="Título Sobre" class="w-full px-4 py-3 rounded-xl border-2" style="border-color:var(--nude-medium)" value="${c.aboutTitle||''}">
+                                <textarea id="aboutText1" placeholder="Sobre - Parágrafo 1" class="w-full px-4 py-3 rounded-xl border-2 h-24" style="border-color:var(--nude-medium)">${c.aboutText1||''}</textarea>
+                                <textarea id="aboutText2" placeholder="Sobre - Parágrafo 2" class="w-full px-4 py-3 rounded-xl border-2 h-24" style="border-color:var(--nude-medium)">${c.aboutText2||''}</textarea>
+                                <textarea id="aboutText3" placeholder="Sobre - Parágrafo 3" class="w-full px-4 py-3 rounded-xl border-2 h-24" style="border-color:var(--nude-medium)">${c.aboutText3||''}</textarea>
+                                
+                                <h3 class="font-bold text-xl mt-6 mb-4">Estatísticas</h3>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <input type="text" id="stat1Num" placeholder="Número 1" class="px-4 py-3 rounded-xl border-2" style="border-color:var(--nude-medium)" value="${c.stat1Num||'5+'}">
+                                    <input type="text" id="stat1Text" placeholder="Texto 1" class="px-4 py-3 rounded-xl border-2" style="border-color:var(--nude-medium)" value="${c.stat1Text||'Anos de Experiência'}">
+                                    <input type="text" id="stat2Num" placeholder="Número 2" class="px-4 py-3 rounded-xl border-2" style="border-color:var(--nude-medium)" value="${c.stat2Num||'100'}">
+                                    <input type="text" id="stat2Text" placeholder="Texto 2" class="px-4 py-3 rounded-xl border-2" style="border-color:var(--nude-medium)" value="${c.stat2Text||'Clientes Satisfeitas'}">
+                                    <input type="text" id="stat3Num" placeholder="Número 3" class="px-4 py-3 rounded-xl border-2" style="border-color:var(--nude-medium)" value="${c.stat3Num||'100%'}">
+                                    <input type="text" id="stat3Text" placeholder="Texto 3" class="px-4 py-3 rounded-xl border-2" style="border-color:var(--nude-medium)" value="${c.stat3Text||'Dedicação'}">
+                                </div>
+                                
+                                <h3 class="font-bold text-xl mt-6 mb-4">Contato</h3>
+                                <input type="text" id="phone" placeholder="WhatsApp" class="w-full px-4 py-3 rounded-xl border-2" style="border-color:var(--nude-medium)" value="${c.phone}">
+                                <input type="text" id="address" placeholder="Endereço" class="w-full px-4 py-3 rounded-xl border-2" style="border-color:var(--nude-medium)" value="${c.address||''}">
+                                <input type="text" id="hours" placeholder="Horário" class="w-full px-4 py-3 rounded-xl border-2" style="border-color:var(--nude-medium)" value="${c.hours||''}">
+                                
+                                <button type="submit" class="w-full py-4 rounded-xl font-semibold text-white transition hover:scale-105" style="background:linear-gradient(135deg,var(--brown-medium),var(--brown-dark))">💾 Salvar Alterações</button>
+                            </form>
+                        </div>
+                        
+                        <!-- GALERIA -->
+                        <div class="bg-white rounded-3xl shadow-lg p-8 mb-8">
+                            <h2 class="font-display text-3xl font-bold mb-6" style="color:var(--brown-dark)">Galeria</h2>
+                            <button onclick="openUpload()" class="mb-6 px-8 py-4 rounded-xl font-semibold text-white transition hover:scale-105" style="background:var(--brown-medium)">📤 Adicionar Foto</button>
+                            <div class="gallery-grid">
+                                ${data.gallery.map(g => `
+                                    <div class="gallery-item relative">
+                                        <img src="${g.url}" alt="Galeria">
+                                        <button onclick="deleteGallery('${g.id}')" class="absolute top-2 right-2 bg-red-500 text-white w-10 h-10 rounded-full hover:bg-red-600">×</button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        
+                        <!-- SERVIÇOS -->
+                        <div class="bg-white rounded-3xl shadow-lg p-8 mb-8">
+                            <h2 class="font-display text-3xl font-bold mb-6" style="color:var(--brown-dark)">Serviços</h2>
+                            <div class="mb-6 p-6 rounded-xl" style="background:var(--nude-light)">
+                                <h3 class="font-bold mb-4">Adicionar Serviço</h3>
+                                <form onsubmit="addService(event)" class="space-y-4">
+                                    <input type="text" id="serviceTitle" placeholder="Nome do Serviço" class="w-full px-4 py-3 rounded-xl border-2" style="border-color:var(--nude-medium)" required>
+                                    <textarea id="serviceDesc" placeholder="Descrição" class="w-full px-4 py-3 rounded-xl border-2 h-24" style="border-color:var(--nude-medium)" required></textarea>
+                                    <input type="text" id="servicePrice" placeholder="Preço" class="w-full px-4 py-3 rounded-xl border-2" style="border-color:var(--nude-medium)" required>
+                                    <button type="submit" class="w-full py-3 rounded-xl font-semibold text-white transition hover:scale-105" style="background:var(--brown-medium)">➕ Adicionar</button>
+                                </form>
+                            </div>
+                            <div class="grid md:grid-cols-2 gap-6">
+                                ${data.services.map(s => `
+                                    <div class="p-6 rounded-2xl border-2 relative" style="border-color:var(--nude-medium)">
+                                        <h3 class="font-bold text-xl mb-2">${s.title}</h3>
+                                        <p class="mb-2">${s.description}</p>
+                                        <p class="font-semibold" style="color:var(--brown-medium)">${s.price}</p>
+                                        <button onclick="deleteService('${s.id}')" class="absolute top-4 right-4 bg-red-500 text-white w-8 h-8 rounded-full hover:bg-red-600">×</button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        
+                        <!-- PIN -->
+                        <div class="bg-white rounded-3xl shadow-lg p-8">
+                            <h2 class="font-display text-3xl font-bold mb-6" style="color:var(--brown-dark)">Alterar PIN</h2>
+                            <form onsubmit="changePin(event)" class="max-w-md mx-auto space-y-4">
+                                <input type="password" id="newPin" placeholder="Novo PIN (4 dígitos)" class="w-full px-4 py-4 rounded-xl border-2 text-center text-2xl font-bold tracking-widest" maxlength="4" style="border-color:var(--nude-medium)" required>
+                                <input type="password" id="confirmPin" placeholder="Confirmar PIN" class="w-full px-4 py-4 rounded-xl border-2 text-center text-2xl font-bold tracking-widest" maxlength="4" style="border-color:var(--nude-medium)" required>
+                                <button type="submit" class="w-full py-4 rounded-xl font-semibold text-white transition hover:scale-105" style="background:linear-gradient(135deg,var(--brown-medium),var(--brown-dark))">🔒 Alterar PIN</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // ACTIONS
+        window.handleLogin = async (e) => {
+            e.preventDefault();
+            const pin = document.getElementById('pin').value;
+            const valid = await checkPin(pin);
+            if (valid) {
+                isAdmin = true;
+                renderAdmin();
+            } else {
+                const err = document.getElementById('error');
+                err.textContent = 'PIN incorreto';
+                err.classList.remove('hidden');
+            }
+        };
+        
+        window.logout = () => {
+            isAdmin = false;
+            window.location.hash = '';
+            renderSite();
+        };
+        
+        window.saveContent = async (e) => {
+            e.preventDefault();
+            const content = {
+                heroTitle: document.getElementById('heroTitle').value,
+                heroSubtitle: document.getElementById('heroSubtitle').value,
+                aboutTitle: document.getElementById('aboutTitle').value,
+                aboutText1: document.getElementById('aboutText1').value,
+                aboutText2: document.getElementById('aboutText2').value,
+                aboutText3: document.getElementById('aboutText3').value,
+                stat1Num: document.getElementById('stat1Num').value,
+                stat1Text: document.getElementById('stat1Text').value,
+                stat2Num: document.getElementById('stat2Num').value,
+                stat2Text: document.getElementById('stat2Text').value,
+                stat3Num: document.getElementById('stat3Num').value,
+                stat3Text: document.getElementById('stat3Text').value,
+                phone: document.getElementById('phone').value,
+                address: document.getElementById('address').value,
+                hours: document.getElementById('hours').value
+            };
+            await setDoc(doc(db, 'content', 'main'), content);
+            data.content = content;
+            showSuccess('Conteúdo salvo!');
+        };
+        
+        window.openUpload = () => {
+            const widget = cloudinary.createUploadWidget({
+                cloudName: window.CLOUDINARY.cloudName,
+                uploadPreset: window.CLOUDINARY.uploadPreset,
+                sources: ['local'],
+                multiple: false,
+                maxFileSize: 10000000,
+                clientAllowedFormats: ['png','jpg','jpeg','webp'],
+                maxImageWidth: 2000,
+                cropping: true
+            }, async (err, result) => {
+                if (!err && result?.event === 'success') {
+                    const id = `img_${Date.now()}`;
+                    await setDoc(doc(db, 'gallery', id), { url: result.info.secure_url });
+                    data.gallery.push({ id, url: result.info.secure_url });
+                    renderAdmin();
+                    showSuccess('Foto adicionada!');
+                }
+            });
+            widget.open();
+        };
+        
+        window.deleteGallery = async (id) => {
+            if (confirm('Deletar foto?')) {
+                await deleteDoc(doc(db, 'gallery', id));
+                data.gallery = data.gallery.filter(g => g.id !== id);
+                renderAdmin();
+                showSuccess('Foto removida!');
+            }
+        };
+        
+        window.addService = async (e) => {
+            e.preventDefault();
+            const service = {
+                title: document.getElementById('serviceTitle').value,
+                description: document.getElementById('serviceDesc').value,
+                price: document.getElementById('servicePrice').value
+            };
+            const id = `srv_${Date.now()}`;
+            await setDoc(doc(db, 'services', id), service);
+            data.services.push({ id, ...service });
+            renderAdmin();
+            showSuccess('Serviço adicionado!');
+        };
+        
+        window.deleteService = async (id) => {
+            if (confirm('Deletar serviço?')) {
+                await deleteDoc(doc(db, 'services', id));
+                data.services = data.services.filter(s => s.id !== id);
+                renderAdmin();
+                showSuccess('Serviço removido!');
+            }
+        };
+        
+        window.changePin = async (e) => {
+            e.preventDefault();
+            const newPin = document.getElementById('newPin').value;
+            const confirm = document.getElementById('confirmPin').value;
+            if (newPin !== confirm) {
+                alert('PINs não coincidem!');
+                return;
+            }
+            if (newPin.length !== 4) {
+                alert('PIN deve ter 4 dígitos!');
+                return;
+            }
+            await setDoc(doc(db, 'config', 'admin'), { pin: newPin });
+            showSuccess('PIN alterado!');
+        };
+        
+        function showSuccess(msg) {
+            const el = document.getElementById('success');
+            if (el) {
+                el.textContent = msg;
+                el.classList.remove('hidden');
+                setTimeout(() => el.classList.add('hidden'), 3000);
+            }
+        }
+        
+        // INIT
+        async function init() {
+            await loadData();
+            const hash = window.location.hash;
+            if (hash === '#admin') {
+                renderLogin();
+            } else if (hash === '#admin-panel' && isAdmin) {
+                renderAdmin();
+            } else {
+                renderSite();
+            }
+        }
+        
+        init();
+    </script>
+</body>
+</html>
