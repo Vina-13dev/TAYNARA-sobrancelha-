@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Admin - Taynara Design</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://upload-widget.cloudinary.com/global/all.js"></script>
+    <style>
+        :root { --nude-light:#F5EBE0; --nude-medium:#E3D5CA; --brown-soft:#A0826D; --brown-medium:#8B6F47; --brown-dark:#6B5344; --cream:#FFF8F0; --text-dark:#4A3F35; }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Montserrat',sans-serif; background:var(--cream); color:var(--text-dark); }
+        .font-display { font-family:'Cormorant Garamond',serif; }
+        .bg-pattern { background:linear-gradient(135deg,var(--nude-light) 0%,var(--cream) 100%); }
+        .gallery-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:20px; }
+        .gallery-item { position:relative; overflow:hidden; border-radius:20px; aspect-ratio:1; }
+        .gallery-item img { width:100%; height:100%; object-fit:cover; }
+        .image-preview { width:200px; height:200px; object-fit:cover; border-radius:15px; border:3px solid var(--nude-medium); }
+        .spinner { border:3px solid var(--nude-medium); border-top:3px solid var(--brown-medium); border-radius:50%; width:50px; height:50px; animation:spin 1s linear infinite; margin:0 auto; }
+        @keyframes spin { 0% { transform:rotate(0deg); } 100% { transform:rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div id="root">
+        <div class="min-h-screen flex items-center justify-center bg-pattern px-6">
+            <div class="max-w-md w-full bg-white rounded-3xl shadow-2xl p-8">
+                <div class="text-center mb-8">
+                    <div class="text-6xl mb-4">🔐</div>
+                    <h2 class="font-display text-4xl font-bold" style="color:var(--brown-dark)">Painel Admin</h2>
+                    <p class="mt-2 opacity-70">Digite o código PIN</p>
+                </div>
+                <form onsubmit="window.handleLogin(event)">
+                    <input type="password" id="pin" class="w-full px-4 py-4 rounded-xl border-2 text-center text-2xl font-bold tracking-widest mb-4" placeholder="••••" maxlength="4" style="border-color:var(--nude-medium)" required autocomplete="off">
+                    <div id="error" class="hidden p-3 rounded-xl bg-red-100 text-red-700 text-center mb-4"></div>
+                    <button type="submit" class="w-full py-4 rounded-xl font-semibold text-white transition hover:scale-105" style="background:linear-gradient(135deg,var(--brown-medium),var(--brown-dark))">Entrar</button>
+                    <p class="text-center text-sm opacity-60 mt-4">PIN padrão: 1002</p>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, getDocs, doc, setDoc, deleteDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        
+        const app = initializeApp({
+            apiKey: "AIzaSyB8wbhq5Oi7wo9-4LBv5gdmvNRREJzRgIo",
+            authDomain: "taynara-desg.firebaseapp.com",
+            projectId: "taynara-desg",
+            storageBucket: "taynara-desg.firebasestorage.app",
+            messagingSenderId: "127070989394",
+            appId: "1:127070989394:web:0eb0587d26c07eea57438b"
+        });
+        
+        const db = getFirestore(app);
+        const CL = { cloudName: 'ddugcndml', uploadPreset: 'taynara_preset' };
+        let data = { content: {}, gallery: [], services: [] };
+        
+        async function checkPin(pin) {
+            try {
+                const cd = await getDoc(doc(db, 'config', 'admin'));
+                if (!cd.exists()) {
+                    await setDoc(doc(db, 'config', 'admin'), { pin: '1002' });
+                    return pin === '1002';
+                }
+                return cd.data().pin === pin;
+            } catch (err) {
+                console.error('Erro PIN:', err);
+                return false;
+            }
+        }
+        
+        async function loadData() {
+            try {
+                const cd = await getDoc(doc(db, 'content', 'main'));
+                data.content = cd.exists() ? cd.data() : {};
+                const gd = await getDocs(collection(db, 'gallery'));
+                data.gallery = gd.docs.map(d => ({ id: d.id, ...d.data() }));
+                const sd = await getDocs(collection(db, 'services'));
+                data.services = sd.docs.map(d => ({ id: d.id, ...d.data() }));
+                console.log('✅ Dados carregados');
+            } catch (err) {
+                console.error('❌ Erro:', err);
+            }
+        }
+        
+        window.handleLogin = async (e) => {
+            e.preventDefault();
+            const pin = document.getElementById('pin').value;
+            if (await checkPin(pin)) {
+                await loadData();
+                renderAdmin();
+            } else {
+                document.getElementById('error').textContent = 'PIN incorreto!';
+                document.getElementById('error').classList.remove('hidden');
+            }
+        };
+        
+        function renderAdmin() {
+            const c = {
+                heroTitle: '', heroSubtitle: '', heroImage: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800',
+                aboutTitle: '', aboutText1: '', aboutText2: '', aboutText3: '',
+                aboutImage: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600',
+                aboutVideo: '',
+                phone: '(31) 99999-9999', address: '', hours: '',
+                stat1Num: '5+', stat1Text: 'Anos de Experiência',
+                stat2Num: '100', stat2Text: 'Clientes Satisfeitas',
+                stat3Num: '100%', stat3Text: 'Dedicação',
+                ...data.content
+            };
+            
+            document.getElementById('root').innerHTML = `
+                <div class="min-h-screen" style="background:var(--cream)">
+                    <header class="bg-white shadow-lg px-6 py-4">
+                        <div class="max-w-7xl mx-auto flex justify-between items-center">
+                            <h1 class="font-display text-3xl font-bold" style="color:var(--brown-dark)">Painel Admin COMPLETO</h1>
+                            <div class="flex gap-4">
+                                <a href="/" target="_blank" class="px-6 py-2 rounded-full bg-blue-500 text-white hover:bg-blue-600 font-semibold">🌐 Ver Site</a>
+                                <button onclick="location.reload()" class="px-6 py-2 rounded-full bg-red-500 text-white hover:bg-red-600 font-semibold">Sair</button>
+                            </div>
+                        </div>
+                    </header>
+                    <div class="max-w-7xl mx-auto px-6 py-12">
+                        <div id="success" class="hidden mb-6 p-4 rounded-xl bg-green-100 text-green-700 text-center font-bold text-lg"></div>
+                        
+                        <!-- FOTOS PRINCIPAIS -->
+                        <div class="bg-white rounded-3xl shadow-lg p-8 mb-8">
+                            <h2 class="font-display text-3xl font-bold mb-6" style="color:var(--brown-dark)">📸 Fotos Principais do Site</h2>
+                            
+                            <div class="grid md:grid-cols-2 gap-8 mb-8">
+                                <div class="p-6 rounded-xl" style="background:var(--nude-light)">
+                                    <h3 class="font-bold text-xl mb-4">🎭 Foto Principal (Hero)</h3>
+                                    <p class="text-sm mb-4 opacity-70">Foto grande na primeira seção do site</p>
+                                    <img id="heroImagePreview" src="${c.heroImage}" class="image-preview mb-4">
+                                    <button onclick="window.uploadHeroImage()" class="w-full py-3 rounded-xl font-semibold text-white transition hover:scale-105" style="background:var(--brown-medium)">📤 TROCAR FOTO HERO</button>
+                                </div>
+                                
+                                <div class="p-6 rounded-xl" style="background:var(--nude-light)">
+                                    <h3 class="font-bold text-xl mb-4">👤 Foto "Sobre Mim"</h3>
+                                    <p class="text-sm mb-4 opacity-70">Foto na seção "Sobre"</p>
+                                    <img id="aboutImagePreview" src="${c.aboutImage}" class="image-preview mb-4">
+                                    <button onclick="window.uploadAboutImage()" class="w-full py-3 rounded-xl font-semibold text-white transition hover:scale-105" style="background:var(--brown-medium)">📤 TROCAR FOTO SOBRE</button>
+                                </div>
+                            </div>
+                            
+                            <div class="p-6 rounded-xl" style="background:var(--nude-light)">
+                                <h3 class="font-bold text-xl mb-4">🎬 Vídeo "Sobre Mim" (OPCIONAL)</h3>
+                                <p class="text-sm mb-4 opacity-70">Cole o link do YouTube ou Vimeo. Se adicionar vídeo, ele substitui a foto da seção "Sobre".</p>
+                                <input type="text" id="aboutVideo" placeholder="https://www.youtube.com/watch?v=..." class="w-full px-4 py-3 rounded-xl border-2 mb-2" style="border-color:var(--nude-medium)" value="${c.aboutVideo}">
+                                <p class="text-xs opacity-60">💡 Deixe vazio para usar a foto em vez de vídeo</p>
+                            </div>
+                        </div>
+                        
+                        <!-- TEXTOS -->
+                        <div class="bg-white rounded-3xl shadow-lg p-8 mb-8">
+                            <h2 class="font-display text-3xl font-bold mb-6" style="color:var(--brown-dark)">📝 Textos do Site</h2>
+                            <form onsubmit="window.saveContent(event)" class="space-y-6">
+                                <div>
+                                    <label class="block mb-2 font-bold text-lg">Título Principal</label>
+                                    <input type="text" id="heroTitle" class="w-full px-4 py-3 rounded-xl border-2 text-lg" style="border-color:var(--nude-medium)" value="${c.heroTitle}" placeholder="Especialista em Design de Sobrancelhas">
+                                </div>
+                                <div>
+                                    <label class="block mb-2 font-bold text-lg">Subtítulo</label>
+                                    <textarea id="heroSubtitle" class="w-full px-4 py-3 rounded-xl border-2 h-24 text-lg" style="border-color:var(--nude-medium)" placeholder="Realce sua beleza natural...">${c.heroSubtitle}</textarea>
+                                </div>
+                                
+                                <h3 class="font-bold text-2xl mt-8 mb-4 pt-6 border-t-2" style="border-color:var(--nude-medium)">Seção "Sobre"</h3>
+                                <div>
+                                    <label class="block mb-2 font-bold text-lg">Título "Sobre"</label>
+                                    <input type="text" id="aboutTitle" class="w-full px-4 py-3 rounded-xl border-2 text-lg" style="border-color:var(--nude-medium)" value="${c.aboutTitle}" placeholder="Sobre Mim">
+                                </div>
+                                <div>
+                                    <label class="block mb-2 font-bold">Parágrafo 1</label>
+                                    <textarea id="aboutText1" class="w-full px-4 py-3 rounded-xl border-2 h-24" style="border-color:var(--nude-medium)">${c.aboutText1}</textarea>
+                                </div>
+                                <div>
+                                    <label class="block mb-2 font-bold">Parágrafo 2</label>
+                                    <textarea id="aboutText2" class="w-full px-4 py-3 rounded-xl border-2 h-24" style="border-color:var(--nude-medium)">${c.aboutText2}</textarea>
+                                </div>
+                                <div>
+                                    <label class="block mb-2 font-bold">Parágrafo 3</label>
+                                    <textarea id="aboutText3" class="w-full px-4 py-3 rounded-xl border-2 h-24" style="border-color:var(--nude-medium)">${c.aboutText3}</textarea>
+                                </div>
+                                
+                                <h3 class="font-bold text-2xl mt-8 mb-4 pt-6 border-t-2" style="border-color:var(--nude-medium)">📊 Estatísticas</h3>
+                                <div class="grid grid-cols-2 gap-4 bg-gray-50 p-6 rounded-xl">
+                                    <div><label class="block mb-2 font-bold">Número 1</label><input type="text" id="stat1Num" class="w-full px-4 py-3 rounded-xl border-2" style="border-color:var(--nude-medium)" value="${c.stat1Num}"></div>
+                                    <div><label class="block mb-2 font-bold">Texto 1</label><input type="text" id="stat1Text" class="w-full px-4 py-3 rounded-xl border-2" style="border-color:var(--nude-medium)" value="${c.stat1Text}"></div>
+                                    <div><label class="block mb-2 font-bold">Número 2</label><input type="text" id="stat2Num" class="w-full px-4 py-3 rounded-xl border-2" style="border-color:var(--nude-medium)" value="${c.stat2Num}"></div>
+                                    <div><label class="block mb-2 font-bold">Texto 2</label><input type="text" id="stat2Text" class="w-full px-4 py-3 rounded-xl border-2" style="border-color:var(--nude-medium)" value="${c.stat2Text}"></div>
+                                    <div><label class="block mb-2 font-bold">Número 3</label><input type="text" id="stat3Num" class="w-full px-4 py-3 rounded-xl border-2" style="border-color:var(--nude-medium)" value="${c.stat3Num}"></div>
+                                    <div><label class="block mb-2 font-bold">Texto 3</label><input type="text" id="stat3Text" class="w-full px-4 py-3 rounded-xl border-2" style="border-color:var(--nude-medium)" value="${c.stat3Text}"></div>
+                                </div>
+                                
+                                <h3 class="font-bold text-2xl mt-8 mb-4 pt-6 border-t-2" style="border-color:var(--nude-medium)">📞 Contato</h3>
+                                <div><label class="block mb-2 font-bold text-lg">WhatsApp</label><input type="text" id="phone" class="w-full px-4 py-3 rounded-xl border-2 text-lg" style="border-color:var(--nude-medium)" value="${c.phone}"></div>
+                                <div><label class="block mb-2 font-bold text-lg">Endereço</label><input type="text" id="address" class="w-full px-4 py-3 rounded-xl border-2 text-lg" style="border-color:var(--nude-medium)" value="${c.address}"></div>
+                                <div><label class="block mb-2 font-bold text-lg">Horário</label><input type="text" id="hours" class="w-full px-4 py-3 rounded-xl border-2 text-lg" style="border-color:var(--nude-medium)" value="${c.hours}"></div>
+                                
+                                <button type="submit" class="w-full py-5 rounded-xl font-bold text-white text-xl transition hover:scale-105 mt-8 shadow-lg" style="background:linear-gradient(135deg,var(--brown-medium),var(--brown-dark))">💾 SALVAR TODAS AS ALTERAÇÕES</button>
+                            </form>
+                        </div>
+                        
+                        <!-- GALERIA -->
+                        <div class="bg-white rounded-3xl shadow-lg p-8 mb-8">
+                            <h2 class="font-display text-3xl font-bold mb-6" style="color:var(--brown-dark)">📸 Galeria de Fotos</h2>
+                            <button onclick="window.openGalleryUpload()" class="mb-6 px-8 py-4 rounded-xl font-bold text-white text-lg transition hover:scale-105 shadow-lg" style="background:var(--brown-medium)">📤 ADICIONAR FOTO NA GALERIA</button>
+                            ${data.gallery.length === 0 ? `<div class="text-center py-16 bg-gray-50 rounded-xl"><p class="text-xl mb-3">📷 Nenhuma foto</p></div>` : `<p class="mb-4 text-sm opacity-70">${data.gallery.length} foto(s)</p><div class="gallery-grid">${data.gallery.map(g => `<div class="gallery-item relative"><img src="${g.url}"><button onclick="window.deleteGallery('${g.id}')" class="absolute top-2 right-2 bg-red-500 text-white w-12 h-12 rounded-full hover:bg-red-600 font-bold text-2xl">×</button></div>`).join('')}</div>`}
+                        </div>
+                        
+                        <!-- SERVIÇOS -->
+                        <div class="bg-white rounded-3xl shadow-lg p-8 mb-8">
+                            <h2 class="font-display text-3xl font-bold mb-6" style="color:var(--brown-dark)">✨ Serviços</h2>
+                            <div class="mb-6 p-6 rounded-xl bg-gray-50">
+                                <h3 class="font-bold text-xl mb-4">Adicionar Serviço</h3>
+                                <form onsubmit="window.addService(event)" class="space-y-4">
+                                    <input type="text" id="serviceTitle" placeholder="Nome" class="w-full px-4 py-3 rounded-xl border-2 text-lg" style="border-color:var(--nude-medium)" required>
+                                    <textarea id="serviceDesc" placeholder="Descrição" class="w-full px-4 py-3 rounded-xl border-2 h-24" style="border-color:var(--nude-medium)" required></textarea>
+                                    <input type="text" id="servicePrice" placeholder="Preço" class="w-full px-4 py-3 rounded-xl border-2 text-lg" style="border-color:var(--nude-medium)" required>
+                                    <button type="submit" class="w-full py-4 rounded-xl font-bold text-white text-lg transition hover:scale-105" style="background:var(--brown-medium)">➕ Adicionar</button>
+                                </form>
+                            </div>
+                            ${data.services.length === 0 ? `<p class="text-center py-8">Nenhum serviço</p>` : `<div class="grid md:grid-cols-2 gap-6">${data.services.map(s => `<div class="p-6 rounded-2xl border-2 relative bg-gray-50" style="border-color:var(--nude-medium)"><h3 class="font-bold text-xl mb-2 pr-10">${s.title}</h3><p class="mb-3 text-sm">${s.description}</p><p class="font-bold text-lg" style="color:var(--brown-medium)">${s.price}</p><button onclick="window.deleteService('${s.id}')" class="absolute top-4 right-4 bg-red-500 text-white w-10 h-10 rounded-full hover:bg-red-600 font-bold text-xl">×</button></div>`).join('')}</div>`}
+                        </div>
+                        
+                        <!-- PIN -->
+                        <div class="bg-white rounded-3xl shadow-lg p-8">
+                            <h2 class="font-display text-3xl font-bold mb-6" style="color:var(--brown-dark)">🔐 Alterar PIN</h2>
+                            <form onsubmit="window.changePin(event)" class="max-w-md mx-auto space-y-4">
+                                <input type="password" id="newPin" placeholder="Novo PIN (4 dígitos)" class="w-full px-4 py-4 rounded-xl border-2 text-center text-2xl font-bold tracking-widest" maxlength="4" style="border-color:var(--nude-medium)" required>
+                                <input type="password" id="confirmPin" placeholder="Confirmar" class="w-full px-4 py-4 rounded-xl border-2 text-center text-2xl font-bold tracking-widest" maxlength="4" style="border-color:var(--nude-medium)" required>
+                                <button type="submit" class="w-full py-4 rounded-xl font-bold text-white text-lg transition hover:scale-105" style="background:linear-gradient(135deg,var(--brown-medium),var(--brown-dark))">🔒 Alterar PIN</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        window.uploadHeroImage = () => {
+            cloudinary.createUploadWidget({ cloudName: CL.cloudName, uploadPreset: CL.uploadPreset, sources: ['local'], multiple: false, maxFileSize: 10000000, clientAllowedFormats: ['png','jpg','jpeg','webp'], cropping: true }, async (err, result) => {
+                if (!err && result?.event === 'success') {
+                    data.content.heroImage = result.info.secure_url;
+                    document.getElementById('heroImagePreview').src = result.info.secure_url;
+                    await setDoc(doc(db, 'content', 'main'), data.content);
+                    showSuccess('✅ Foto Hero salva! Recarregue o site para ver.');
+                }
+            }).open();
+        };
+        
+        window.uploadAboutImage = () => {
+            cloudinary.createUploadWidget({ cloudName: CL.cloudName, uploadPreset: CL.uploadPreset, sources: ['local'], multiple: false, maxFileSize: 10000000, clientAllowedFormats: ['png','jpg','jpeg','webp'], cropping: true }, async (err, result) => {
+                if (!err && result?.event === 'success') {
+                    data.content.aboutImage = result.info.secure_url;
+                    document.getElementById('aboutImagePreview').src = result.info.secure_url;
+                    await setDoc(doc(db, 'content', 'main'), data.content);
+                    showSuccess('✅ Foto Sobre salva! Recarregue o site para ver.');
+                }
+            }).open();
+        };
+        
+        window.saveContent = async (e) => {
+            e.preventDefault();
+            data.content = {
+                ...data.content,
+                heroTitle: document.getElementById('heroTitle').value,
+                heroSubtitle: document.getElementById('heroSubtitle').value,
+                aboutTitle: document.getElementById('aboutTitle').value,
+                aboutText1: document.getElementById('aboutText1').value,
+                aboutText2: document.getElementById('aboutText2').value,
+                aboutText3: document.getElementById('aboutText3').value,
+                aboutVideo: document.getElementById('aboutVideo').value,
+                stat1Num: document.getElementById('stat1Num').value,
+                stat1Text: document.getElementById('stat1Text').value,
+                stat2Num: document.getElementById('stat2Num').value,
+                stat2Text: document.getElementById('stat2Text').value,
+                stat3Num: document.getElementById('stat3Num').value,
+                stat3Text: document.getElementById('stat3Text').value,
+                phone: document.getElementById('phone').value,
+                address: document.getElementById('address').value,
+                hours: document.getElementById('hours').value
+            };
+            await setDoc(doc(db, 'content', 'main'), data.content);
+            showSuccess('✅ SALVO! Recarregue o site (Ctrl+Shift+R) para ver as mudanças!');
+        };
+        
+        window.openGalleryUpload = () => {
+            cloudinary.createUploadWidget({ cloudName: CL.cloudName, uploadPreset: CL.uploadPreset, sources: ['local'], multiple: false, maxFileSize: 10000000, clientAllowedFormats: ['png','jpg','jpeg','webp'], cropping: true }, async (err, result) => {
+                if (!err && result?.event === 'success') {
+                    const id = `img_${Date.now()}`;
+                    await setDoc(doc(db, 'gallery', id), { url: result.info.secure_url });
+                    await loadData();
+                    renderAdmin();
+                    showSuccess('✅ Foto adicionada!');
+                }
+            }).open();
+        };
+        
+        window.deleteGallery = async (id) => {
+            if (confirm('Deletar foto?')) {
+                await deleteDoc(doc(db, 'gallery', id));
+                await loadData();
+                renderAdmin();
+                showSuccess('✅ Foto removida!');
+            }
+        };
+        
+        window.addService = async (e) => {
+            e.preventDefault();
+            const id = `srv_${Date.now()}`;
+            await setDoc(doc(db, 'services', id), {
+                title: document.getElementById('serviceTitle').value,
+                description: document.getElementById('serviceDesc').value,
+                price: document.getElementById('servicePrice').value
+            });
+            await loadData();
+            renderAdmin();
+            showSuccess('✅ Serviço adicionado!');
+        };
+        
+        window.deleteService = async (id) => {
+            if (confirm('Deletar serviço?')) {
+                await deleteDoc(doc(db, 'services', id));
+                await loadData();
+                renderAdmin();
+                showSuccess('✅ Serviço removido!');
+            }
+        };
+        
+        window.changePin = async (e) => {
+            e.preventDefault();
+            const newPin = document.getElementById('newPin').value;
+            const confirmPin = document.getElementById('confirmPin').value;
+            if (newPin !== confirmPin) { alert('❌ PINs diferentes!'); return; }
+            if (newPin.length !== 4) { alert('❌ PIN deve ter 4 dígitos!'); return; }
+            await setDoc(doc(db, 'config', 'admin'), { pin: newPin });
+            showSuccess('✅ PIN alterado!');
+        };
+        
+        function showSuccess(msg) {
+            const el = document.getElementById('success');
+            if (el) {
+                el.textContent = msg;
+                el.classList.remove('hidden');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                setTimeout(() => el.classList.add('hidden'), 8000);
+            }
+        }
+    </script>
+</body>
+</html>
